@@ -34,7 +34,7 @@ func main() {
 
 Using your manager instance. You can call `wracha.Manager.On` to get an instance of `wracha.Actor`.
 
-The name given will be used as a prefix for cache key. Calling `wracha.Manager.On` with the same name will return the same instance of `wracha.Actor`.
+The name given will be used as a prefix for cache key.
 
 ```go
 actor := manager.On("example")

@@ -133,17 +133,6 @@ func (s *ManagerTestSuite) SetupTest() {
 	s.manager = wracha.NewManager(s.adapter, s.codec, s.logger)
 }
 
-func (s ManagerTestSuite) TestSameActorInstance() {
-	actor1 := s.manager.On("testing1")
-	actor2 := s.manager.On("testing2")
-	actor1D := s.manager.On("testing1")
-	actor2D := s.manager.On("testing2")
-
-	s.False(actor1 == actor2)
-	s.True(actor1 == actor1D)
-	s.True(actor2 == actor2D)
-}
-
 func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 	actor := s.manager.On("testing").SetReturnType(new(testStruct))
 

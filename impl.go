@@ -31,7 +31,6 @@ type (
 		adapter adapter.Adapter
 		codec   codec.Codec
 		logger  logger.Logger
-		actors  map[string]Actor
 	}
 )
 
@@ -44,27 +43,17 @@ func NewManager(adapter adapter.Adapter, codec codec.Codec, logger logger.Logger
 		adapter: adapter,
 		codec:   codec,
 		logger:  logger,
-		actors:  make(map[string]Actor),
 	}
 }
 
 func (m defaultManager) On(name string) Actor {
-	if actor, ok := m.actors[name]; ok {
-		return actor
-	}
-	actor := &defaultActor{
-		d: actorDeps{
-			adapter: m.adapter,
-			codec:   m.codec,
-			logger:  m.logger,
-		},
+	return &defaultActor{
+		d:          actorDeps(m),
 		name:       name,
 		ttl:        TTLDefault,
 		ctx:        context.Background(),
 		returnType: nil,
 	}
-	m.actors[name] = actor
-	return actor
 }
 
 func (a *defaultActor) SetTTL(ttl time.Duration) Actor {
