@@ -126,7 +126,7 @@ func (a defaultActor) handle(kv interface{}, actionFn ActionFunc) (interface{}, 
 		// If value is not found, attempt to lazy load the value into cache.
 		// To speed up future requests, only attempt the lock if the value does not exist in cache.
 		if errors.Is(err, adapter.ErrNotFound) {
-			lockKey := "key###" + key
+			lockKey := "lock###" + key
 
 			if err := a.d.adapter.Lock(a.ctx, lockKey); err != nil {
 				return nil, &cachingError{
