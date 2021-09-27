@@ -7,7 +7,7 @@ Supports in memory cache, [go-redis](https://github.com/go-redis/redis), and [re
 ## Usage
 ### Initialization
 
-To use, create an instance of Manager with your flavor of `adapter`, `codec`, and `logger`.
+To use, create an instance of `wracha.Manager` with your flavor of `adapter`, `codec`, and `logger`.
 
 ```go
 package main
@@ -32,7 +32,7 @@ func main() {
 
 ### Defining Action
 
-Using your manager instance. You can call `wracha.Manager.On` to get an instance of `wracha.Actor`.
+Using your manager instance, you can call `wracha.Manager.On` to get an instance of `wracha.Actor`.
 
 The name given will be used as a prefix for cache key.
 
@@ -104,9 +104,14 @@ id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 err := actor.Invalidate(id)
 if err != nil {
-    //...
+    // ...
 }
 ```
+
+### Error Handling
+By default, errors thrown before calling actions (value retrieval or locking) immediately executes the action without an attempt to store the value in cache. All errors thrown after calling actions (value storage) is also ignored.
+
+You can override this behaviour by setting either `wracha.Actor.SetPreActionErrorHandler` or `wracha.Actor.SetPostActionErrorHandler`.
 
 ### Multiple Dependencies
 If multiple dependencies are required, you can wrap your dependencies with `wracha.KeyableMap`. The map will be converted to a hashed SHA1 representation as key for the cache.
@@ -144,7 +149,7 @@ type Adapter interface {
 
 ```go
 client := redis.NewClient(&redis.Options{
-    //...
+    // ...
 })
 
 manager := wracha.NewManager(
@@ -157,11 +162,11 @@ manager := wracha.NewManager(
 
 ```go
 pool := &redis.Pool{
-    //...
+    // ...
 }
 
 manager := wracha.NewManager(
-    redigo.NewAdapter(client),
+    redigo.NewAdapter(pool),
     // ...
 )
 ```

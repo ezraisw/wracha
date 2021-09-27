@@ -10,7 +10,26 @@ import (
 )
 
 type (
-	ActionFunc func(context.Context) (ActionResult, error)
+	ActionFunc func(ctx context.Context) (ActionResult, error)
+
+	PreActionErrorHandlerFunc func(ctx context.Context, args PreActionErrorHandlerArgs) (interface{}, error)
+
+	PostActionErrorHandlerFunc func(ctx context.Context, args PostActionErrorHandlerArgs) (interface{}, error)
+
+	PreActionErrorHandlerArgs struct {
+		Key         interface{}
+		Action      ActionFunc
+		ErrCategory string
+		Err         error
+	}
+
+	PostActionErrorHandlerArgs struct {
+		Key         interface{}
+		Action      ActionFunc
+		Result      ActionResult
+		ErrCategory string
+		Err         error
+	}
 
 	ActionResult struct {
 		// Whether to cache the returned values.
@@ -34,12 +53,22 @@ type (
 		// This will be used to unmarshal values from cache.
 		SetReturnType(interface{}) Actor
 
+		// Set error handler for handling unconventional errors thrown before action (get in cache and lock).
+		//
+		// Value and error returned by the handler will be forwarded as a return value for Actor.Do.
+		SetPreActionErrorHandler(PreActionErrorHandlerFunc) Actor
+
+		// Set error handler for handling unconventional errors thrown after action (store).
+		//
+		// Value and error returned by the handler will be forwarded as a return value for Actor.Do.
+		SetPostActionErrorHandler(PostActionErrorHandlerFunc) Actor
+
 		// Invalidate the value of the given key.
 		Invalidate(key interface{}) error
 
 		// Perform an action.
 		// The action will not be executed again if the key exists in cache.
-		Do(key interface{}, actionFn ActionFunc) (interface{}, error)
+		Do(key interface{}, action ActionFunc) (interface{}, error)
 	}
 
 	Manager interface {

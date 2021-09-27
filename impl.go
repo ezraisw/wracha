@@ -20,11 +20,13 @@ type (
 	}
 
 	defaultActor struct {
-		d          actorDeps
-		name       string
-		ttl        time.Duration
-		ctx        context.Context
-		returnType reflect.Type
+		d                    actorDeps
+		name                 string
+		ttl                  time.Duration
+		ctx                  context.Context
+		preActionErrHandler  PreActionErrorHandlerFunc
+		postActionErrHandler PostActionErrorHandlerFunc
+		returnType           reflect.Type
 	}
 
 	defaultManager struct {
@@ -48,11 +50,13 @@ func NewManager(adapter adapter.Adapter, codec codec.Codec, logger logger.Logger
 
 func (m defaultManager) On(name string) Actor {
 	return &defaultActor{
-		d:          actorDeps(m),
-		name:       name,
-		ttl:        TTLDefault,
-		ctx:        context.Background(),
-		returnType: nil,
+		d:                    actorDeps(m),
+		name:                 name,
+		ttl:                  TTLDefault,
+		ctx:                  context.Background(),
+		returnType:           nil,
+		preActionErrHandler:  DefaultPreActionErrorHandler,
+		postActionErrHandler: DefaultPostActionErrorHandler,
 	}
 }
 
@@ -79,6 +83,24 @@ func (a *defaultActor) SetReturnType(returnType interface{}) Actor {
 	return a
 }
 
+func (a *defaultActor) SetPreActionErrorHandler(errHandler PreActionErrorHandlerFunc) Actor {
+	if errHandler == nil {
+		panic("nil handler")
+	}
+
+	a.preActionErrHandler = errHandler
+	return a
+}
+
+func (a *defaultActor) SetPostActionErrorHandler(errHandler PostActionErrorHandlerFunc) Actor {
+	if errHandler == nil {
+		panic("nil handler")
+	}
+
+	a.postActionErrHandler = errHandler
+	return a
+}
+
 func (a defaultActor) Invalidate(kv interface{}) error {
 	key, err := a.getKey(kv)
 	if err != nil {
@@ -89,36 +111,55 @@ func (a defaultActor) Invalidate(kv interface{}) error {
 	return a.d.adapter.Delete(a.ctx, key)
 }
 
-func (a defaultActor) Do(kv interface{}, actionFn ActionFunc) (interface{}, error) {
-	value, err := a.handle(kv, actionFn)
+func (a defaultActor) Do(kv interface{}, action ActionFunc) (interface{}, error) {
+	value, err := a.handle(kv, action)
 	if err != nil {
-		var cErr *cachingError
-		if errors.As(err, &cErr) {
-			a.d.logger.Error(err)
-
-			// Allow the action to execute in case of errors made when hitting cache.
-			// Does not store the result in cache.
-			result, err := actionFn(a.ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			return result.Value, nil
+		var preErr *preActionError
+		if errors.As(err, &preErr) {
+			return a.handlePreActionError(kv, action, preErr)
 		}
 
+		var postErr *postActionError
+		if errors.As(err, &postErr) {
+			return a.handlePostActionError(kv, action, postErr)
+		}
+
+		// Error from action.
 		return nil, err
 	}
 
 	return value, nil
 }
 
-func (a defaultActor) handle(kv interface{}, actionFn ActionFunc) (interface{}, error) {
+func (a defaultActor) handlePreActionError(kv interface{}, action ActionFunc, preErr *preActionError) (interface{}, error) {
+	a.d.logger.Error(preErr)
+
+	args := PreActionErrorHandlerArgs{
+		Key:         kv,
+		Action:      action,
+		ErrCategory: preErr.category,
+		Err:         preErr.Unwrap(),
+	}
+	return a.preActionErrHandler(a.ctx, args)
+}
+
+func (a defaultActor) handlePostActionError(kv interface{}, action ActionFunc, postErr *postActionError) (interface{}, error) {
+	a.d.logger.Error(postErr)
+
+	args := PostActionErrorHandlerArgs{
+		Key:         kv,
+		Action:      action,
+		Result:      postErr.result,
+		ErrCategory: postErr.category,
+		Err:         postErr.Unwrap(),
+	}
+	return a.postActionErrHandler(a.ctx, args)
+}
+
+func (a defaultActor) handle(kv interface{}, action ActionFunc) (interface{}, error) {
 	key, err := a.getKey(kv)
 	if err != nil {
-		return nil, &cachingError{
-			message:     "error while creating key",
-			previousErr: err,
-		}
+		return nil, newPreActionError("key", "error while creating key", err)
 	}
 
 	value, err := a.getValue(key)
@@ -129,12 +170,13 @@ func (a defaultActor) handle(kv interface{}, actionFn ActionFunc) (interface{}, 
 			lockKey := "lock###" + key
 
 			if err := a.d.adapter.Lock(a.ctx, lockKey); err != nil {
-				return nil, &cachingError{
-					message:     "error while attempting to lock",
-					previousErr: err,
-				}
+				return nil, newPreActionError("lock", "error while attempting to lock", err)
 			}
-			defer a.d.adapter.Unlock(a.ctx, lockKey)
+			defer func() {
+				a.d.adapter.Unlock(a.ctx, lockKey)
+				a.d.logger.Debug("lock released", lockKey)
+			}()
+			a.d.logger.Debug("lock acquired", lockKey)
 
 			// Check for a second time.
 			// This is required because one or more processes/threads might have already reached the locking stage.
@@ -143,38 +185,26 @@ func (a defaultActor) handle(kv interface{}, actionFn ActionFunc) (interface{}, 
 				if errors.Is(err, adapter.ErrNotFound) {
 					a.d.logger.Debug("perform action", key)
 
-					result, err := actionFn(a.ctx)
+					result, err := action(a.ctx)
 					if err != nil {
 						return nil, err
 					}
 
 					if err := a.storeValue(key, result); err != nil {
-						// Ignore errors thrown while storing in cache.
-						// In other words, do not return with error.
-						err = &cachingError{
-							message:     "error while storing value",
-							previousErr: err,
-						}
-						a.d.logger.Error(err)
+						return nil, newPostActionError("store", "error while storing value", result, err)
 					}
 
 					return result.Value, nil
 				}
 
-				return nil, &cachingError{
-					message:     "error while obtaining value from cache",
-					previousErr: err,
-				}
+				return nil, newPreActionError("get", "error while getting value", err)
 			}
 
 			// Post-lock value get.
 			return value, nil
 		}
 
-		return nil, &cachingError{
-			message:     "error while obtaining value from cache",
-			previousErr: err,
-		}
+		return nil, newPreActionError("get", "error while getting value", err)
 	}
 
 	// Pre-lock value get.
@@ -253,4 +283,20 @@ func makeKey(key interface{}) (string, error) {
 
 	// Naive way to obtain string from a value with an unknown type.
 	return fmt.Sprintf("%v", key), nil
+}
+
+func DefaultPreActionErrorHandler(ctx context.Context, args PreActionErrorHandlerArgs) (interface{}, error) {
+	// Allow the action to execute in case of errors made when hitting cache.
+	// Does not store the result in cache.
+	result, err := args.Action(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Value, nil
+}
+
+func DefaultPostActionErrorHandler(ctx context.Context, args PostActionErrorHandlerArgs) (interface{}, error) {
+	// Ignore error and immediately return value without error.
+	return args.Result.Value, nil
 }
