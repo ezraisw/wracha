@@ -4,6 +4,13 @@ Easy wrapper for lazy caching results of an action for Go. Safe for multi-thread
 
 Supports in memory cache, [go-redis](https://github.com/go-redis/redis), and [redigo](https://github.com/gomodule/redigo).
 
+## Installation
+
+Simply run the following command to install:
+```
+go get github.com/pwnedgod/wracha
+```
+
 ## Usage
 ### Initialization
 
