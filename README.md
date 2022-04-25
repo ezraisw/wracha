@@ -94,7 +94,7 @@ user, err := actor.Do(ctx, wracha.KeyableStr(id), func[model.User](ctx context.C
 ```
 
 ### Invalidating Dependency
-If a dependency is stale, it can be invalidated and deleted off from cache using `wracha.Actor.Invalidate`.
+If a dependency is stale, it can be invalidated and deleted off from cache using `wracha.Actor[T any].Invalidate`.
 
 ```go
 id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
