@@ -20,14 +20,14 @@ type (
 	PostActionErrorHandlerFunc[T any] func(ctx context.Context, args PostActionErrorHandlerArgs[T]) (T, error)
 
 	PreActionErrorHandlerArgs[T any] struct {
-		Key         any
+		Key         Keyable
 		Action      ActionFunc[T]
 		ErrCategory string
 		Err         error
 	}
 
 	PostActionErrorHandlerArgs[T any] struct {
-		Key         any
+		Key         Keyable
 		Action      ActionFunc[T]
 		Result      ActionResult[T]
 		ErrCategory string
@@ -66,19 +66,19 @@ type (
 		SetPostActionErrorHandler(handler PostActionErrorHandlerFunc[T]) Actor[T]
 
 		// Invalidate the value of the given key.
-		Invalidate(ctx context.Context, key any) error
+		Invalidate(ctx context.Context, key Keyable) error
 
 		// Perform an action.
 		// The action will not be executed again if the key exists in cache.
-		Do(ctx context.Context, key any, action ActionFunc[T]) (T, error)
+		Do(ctx context.Context, key Keyable, action ActionFunc[T]) (T, error)
 	}
 
 	Keyable interface {
 		Key() (string, error)
 	}
 
-	KeyableMap    map[string]any
-	KeyableString string
+	KeyableMap map[string]any
+	KeyableStr string
 )
 
 func (m KeyableMap) Key() (string, error) {
@@ -89,6 +89,6 @@ func (m KeyableMap) Key() (string, error) {
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
-func (m KeyableString) Key() (string, error) {
+func (m KeyableStr) Key() (string, error) {
 	return string(m), nil
 }

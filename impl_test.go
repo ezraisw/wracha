@@ -41,7 +41,7 @@ type testStruct struct {
 }
 
 type tCase[T any] struct {
-	key           any
+	key           wracha.Keyable
 	action        wracha.ActionFunc[T]
 	actionResult  wracha.ActionResult[T]
 	err           error
@@ -228,7 +228,7 @@ func (s ManagerTestSuite) TestActionError() {
 
 	cases := []tCase[testStruct]{
 		{
-			key:         "testing-key",
+			key:         wracha.KeyableStr("testing-key"),
 			err:         errMock,
 			expectedErr: errMock,
 			mustRun:     true,
@@ -247,7 +247,7 @@ func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue1,
@@ -257,7 +257,7 @@ func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 			expectedValue: dummyValue1,
 		},
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
@@ -280,7 +280,7 @@ func (s ManagerTestSuite) TestActionWithCachedValues() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
@@ -290,7 +290,7 @@ func (s ManagerTestSuite) TestActionWithCachedValues() {
 			expectedValue: dummyValue1,
 		},
 		{
-			key:           "testing-key",
+			key:           wracha.KeyableStr("testing-key"),
 			mustRun:       false,
 			expectedErr:   nil,
 			expectedValue: dummyValue1,
@@ -311,7 +311,7 @@ func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				TTL:   duration,
@@ -325,7 +325,7 @@ func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 			},
 		},
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
@@ -348,7 +348,7 @@ func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
@@ -357,11 +357,11 @@ func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 			expectedErr:   nil,
 			expectedValue: dummyValue1,
 			postAction: func() {
-				actor.Invalidate(context.Background(), "testing-key")
+				actor.Invalidate(context.Background(), wracha.KeyableStr("testing-key"))
 			},
 		},
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
@@ -448,7 +448,7 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForGet() {
 
 	cases := []tCase[testStruct]{
 		{
-			key:           "testing",
+			key:           wracha.KeyableStr("testing-key"),
 			mustRun:       false,
 			expectedErr:   errMock,
 			expectedValue: testStruct{},
@@ -481,7 +481,7 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForLock() {
 
 	cases := []tCase[testStruct]{
 		{
-			key:           "testing",
+			key:           wracha.KeyableStr("testing"),
 			mustRun:       false,
 			expectedErr:   errMock,
 			expectedValue: testStruct{},
@@ -508,7 +508,7 @@ func (s ManagerTestSuite) TestDefaultPostActionErrorHandler() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing",
+			key: wracha.KeyableStr("testing"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
@@ -551,7 +551,7 @@ func (s ManagerTestSuite) TestPostActionErrorHandlerForStore() {
 
 	cases := []tCase[testStruct]{
 		{
-			key:           "testing",
+			key:           wracha.KeyableStr("testing-key"),
 			actionResult:  result,
 			mustRun:       true,
 			expectedErr:   errMock,
@@ -580,7 +580,7 @@ func (s ManagerTestSuite) TestSetTTL() {
 
 	cases := []tCase[testStruct]{
 		{
-			key: "testing-key",
+			key: wracha.KeyableStr("testing-key"),
 			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue1,

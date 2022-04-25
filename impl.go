@@ -3,7 +3,6 @@ package wracha
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/pwnedgod/wracha/adapter"
@@ -59,8 +58,8 @@ func (a *defaultActor[T]) SetPostActionErrorHandler(errHandler PostActionErrorHa
 	return a
 }
 
-func (a defaultActor[T]) Invalidate(ctx context.Context, kv any) error {
-	key, err := a.getKey(kv)
+func (a defaultActor[T]) Invalidate(ctx context.Context, keyable Keyable) error {
+	key, err := a.getKey(keyable)
 	if err != nil {
 		return err
 	}
@@ -69,17 +68,17 @@ func (a defaultActor[T]) Invalidate(ctx context.Context, kv any) error {
 	return a.o.Adapter.Delete(ctx, key)
 }
 
-func (a defaultActor[T]) Do(ctx context.Context, kv any, action ActionFunc[T]) (T, error) {
-	value, err := a.handle(ctx, kv, action)
+func (a defaultActor[T]) Do(ctx context.Context, keyable Keyable, action ActionFunc[T]) (T, error) {
+	value, err := a.handle(ctx, keyable, action)
 	if err != nil {
 		var preErr *preActionError
 		if errors.As(err, &preErr) {
-			return a.handlePreActionError(ctx, kv, action, preErr)
+			return a.handlePreActionError(ctx, keyable, action, preErr)
 		}
 
 		var postErr *postActionError[T]
 		if errors.As(err, &postErr) {
-			return a.handlePostActionError(ctx, kv, action, postErr)
+			return a.handlePostActionError(ctx, keyable, action, postErr)
 		}
 
 		// Error from action.
@@ -89,11 +88,11 @@ func (a defaultActor[T]) Do(ctx context.Context, kv any, action ActionFunc[T]) (
 	return value, nil
 }
 
-func (a defaultActor[T]) handlePreActionError(ctx context.Context, kv any, action ActionFunc[T], preErr *preActionError) (T, error) {
+func (a defaultActor[T]) handlePreActionError(ctx context.Context, keyable Keyable, action ActionFunc[T], preErr *preActionError) (T, error) {
 	a.o.Logger.Error(preErr)
 
 	args := PreActionErrorHandlerArgs[T]{
-		Key:         kv,
+		Key:         keyable,
 		Action:      action,
 		ErrCategory: preErr.category,
 		Err:         preErr.Unwrap(),
@@ -101,11 +100,11 @@ func (a defaultActor[T]) handlePreActionError(ctx context.Context, kv any, actio
 	return a.preActionErrHandler(ctx, args)
 }
 
-func (a defaultActor[T]) handlePostActionError(ctx context.Context, kv any, action ActionFunc[T], postErr *postActionError[T]) (T, error) {
+func (a defaultActor[T]) handlePostActionError(ctx context.Context, keyable Keyable, action ActionFunc[T], postErr *postActionError[T]) (T, error) {
 	a.o.Logger.Error(postErr)
 
 	args := PostActionErrorHandlerArgs[T]{
-		Key:         kv,
+		Key:         keyable,
 		Action:      action,
 		Result:      postErr.result,
 		ErrCategory: postErr.category,
@@ -114,8 +113,8 @@ func (a defaultActor[T]) handlePostActionError(ctx context.Context, kv any, acti
 	return a.postActionErrHandler(ctx, args)
 }
 
-func (a defaultActor[T]) handle(ctx context.Context, kv any, action ActionFunc[T]) (T, error) {
-	key, err := a.getKey(kv)
+func (a defaultActor[T]) handle(ctx context.Context, keyable Keyable, action ActionFunc[T]) (T, error) {
+	key, err := a.getKey(keyable)
 	if err != nil {
 		return zeroOf[T](), newPreActionError("key", "error while creating key", err)
 	}
@@ -169,8 +168,8 @@ func (a defaultActor[T]) handle(ctx context.Context, kv any, action ActionFunc[T
 	return value, nil
 }
 
-func (a defaultActor[T]) getKey(v any) (string, error) {
-	key, err := makeKey(v)
+func (a defaultActor[T]) getKey(keyable Keyable) (string, error) {
+	key, err := keyable.Key()
 	if err != nil {
 		return "", err
 	}
@@ -225,15 +224,6 @@ func (a defaultActor[T]) storeValue(ctx context.Context, key string, result Acti
 	}
 
 	return nil
-}
-
-func makeKey(key any) (string, error) {
-	if keyable, ok := key.(Keyable); ok {
-		return keyable.Key()
-	}
-
-	// Naive way to obtain string from a value with an unknown type.
-	return fmt.Sprintf("%v", key), nil
 }
 
 func DefaultPreActionErrorHandler[T any](ctx context.Context, args PreActionErrorHandlerArgs[T]) (T, error) {
