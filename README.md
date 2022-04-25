@@ -14,7 +14,7 @@ go get github.com/pwnedgod/wracha
 ## Usage
 ### Initialization
 
-To use, create an instance of `wracha.Manager` with your flavor of `adapter`, `codec`, and `logger`.
+To use, prepare a `wracha.ActorOptions` with your flavor of `adapter`, `codec`, and `logger`.
 
 ```go
 package main
@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-    manager := wracha.NewManager(
+    opts := wracha.ActorOptions(
         memory.NewAdapter(),
         json.NewCodec(),
         std.NewLogger(),
@@ -39,66 +39,56 @@ func main() {
 
 ### Defining Action
 
-Using your manager instance, you can call `wracha.Manager.On` to get an instance of `wracha.Actor`.
+Create an `wracha.Actor` through `wracha.NewActor` with the options.
 
 The name given will be used as a prefix for cache key.
 
 ```go
-actor := manager.On("example")
+actor := wracha.NewActor[MyStruct]("example", opts)
 
 // Set options...
-actor.SetContext(ctx).
-    SetTTL(time.Duration(30) * time.Minute).
-    SetReturnType(new(MyStruct))
+actor.SetTTL(time.Duration(30) * time.Minute).
+    SetPreActionErrorHandler(preActionErrorHandler).
+    SetPostActionErrorHandler(postActionErrorHandler)
 ```
 
 An action is defined as
 ```go
-func(context.Context) (ActionResult, error)
+func[T any](context.Context) (ActionResult[T], error)
 ```
 
-The action must return a `wracha.ActionResult`.
+The action must return a `wracha.ActionResult[T any]`.
 - `Cache` determines whether to cache the given value.
 - `TTL` overrides the set TTL value.
 - `Value` is the value to return and possibly cache. Must be serializable.
 
 If the action returns an error, the actor will **not** attempt to cache.
 
-### Return Type
-
-In order to perform a successful unmarshal when the value is obtained from cache. You must define a return type using `wracha.Actor.SetReturnType`.
-
-```go
-actor.SetReturnType(new(CustomStruct))
-```
-
 ### Performing The Action
 
-To perform an action, call `wracha.Actor.Do`.
+To perform an action, call `wracha.Actor[T any].Do`.
 
 The first parameter is the dependencies of the given action. The actor will only attempt to retrieve previous values from cache of the same dependency. If such value is found, the action will not be performed again.
 
-`wracha.Actor.Do` will return the value from `wracha.ActionResult` and error given by the action, either directly from the action or from cache. It is always `nil` if it successfully obtained the value from cache.
+`wracha.Actor[T any].Do` will return the value from `wracha.ActionResult[T any]` and error. The returned error can either be from the action or from the caching process.
 
 ```go
-// Obtain dependency as parameter from either HTTP request or somewhere else...
+// Obtain dependency as key from either HTTP request or somewhere else...
 id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
-v, err := actor.Do(id, func(ctx context.Context) (wracha.ActionResult, error) {
+user, err := actor.Do(ctx, wracha.KeyableStr(id), func[model.User](ctx context.Context) (wracha.ActionResult[model.User], error) {
     user, err := userRepository.FindByID(ctx, id)
     if err != nil {
-        return wracha.ActionResult{}, err
+        return wracha.ActionResult[model.User]{}, err
     }
 
     // Some other actions...
 
-    return wracha.ActionResult{
+    return wracha.ActionResult[model.User]{
         Cache: true,
         Value: user,
     }, nil
 })
-
-user := v.(model.User)
 
 // Return value from action, write to response, etc...
 ```
@@ -109,16 +99,16 @@ If a dependency is stale, it can be invalidated and deleted off from cache using
 ```go
 id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
-err := actor.Invalidate(id)
+err := actor.Invalidate(ctx, wracha.KeyableStr(id))
 if err != nil {
     // ...
 }
 ```
 
 ### Error Handling
-By default, errors thrown before calling actions (value retrieval or locking) immediately executes the action without an attempt to store the value in cache. All errors thrown after calling actions (value storage) is also ignored.
+By default, errors thrown before calling the action (value retrieval or locking) immediately executes the action without an attempt to store the value in cache. All errors thrown after calling the action (value storage) is also ignored.
 
-You can override this behaviour by setting either `wracha.Actor.SetPreActionErrorHandler` or `wracha.Actor.SetPostActionErrorHandler`.
+You can override this behaviour by setting either `wracha.Actor[T any].SetPreActionErrorHandler` or `wracha.Actor[T any].SetPostActionErrorHandler`.
 
 ### Multiple Dependencies
 If multiple dependencies are required, you can wrap your dependencies with `wracha.KeyableMap`. The map will be converted to a hashed SHA1 representation as key for the cache.
@@ -129,7 +119,7 @@ deps := wracha.KeyableMap{
     "naming": "roger*",
 }
 
-res, err := actor.Do(deps, /* ... */)
+res, err := actor.Do(ctx, deps, /* ... */)
 ```
 
 ### Adapters
@@ -159,10 +149,10 @@ client := redis.NewClient(&redis.Options{
     // ...
 })
 
-manager := wracha.NewManager(
+opts := wracha.ActorOptions{
     goredis.NewAdapter(client),
     // ...
-)
+}
 ```
 
 #### redigo
@@ -172,10 +162,10 @@ pool := &redis.Pool{
     // ...
 }
 
-manager := wracha.NewManager(
+opts := wracha.ActorOptions{
     redigo.NewAdapter(pool),
     // ...
-)
+}
 ```
 
 ### Codec
