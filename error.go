@@ -13,9 +13,9 @@ type (
 		baseError
 	}
 
-	postActionError struct {
+	postActionError[T any] struct {
 		baseError
-		result ActionResult
+		result ActionResult[T]
 	}
 )
 
@@ -29,8 +29,8 @@ func newPreActionError(category string, message string, previousErr error) *preA
 	}
 }
 
-func newPostActionError(category string, message string, result ActionResult, previousErr error) *postActionError {
-	return &postActionError{
+func newPostActionError[T any](category string, message string, result ActionResult[T], previousErr error) *postActionError[T] {
+	return &postActionError[T]{
 		baseError: baseError{
 			category:    category,
 			message:     message,

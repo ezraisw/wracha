@@ -37,17 +37,17 @@ type testStruct struct {
 	Percentage float64
 	Account    testSubStruct
 	Scopes     []string
-	Records    map[string]interface{}
+	Records    map[string]any
 }
 
-type tCase struct {
-	key           interface{}
-	action        wracha.ActionFunc
-	actionResult  wracha.ActionResult
+type tCase[T any] struct {
+	key           any
+	action        wracha.ActionFunc[T]
+	actionResult  wracha.ActionResult[T]
 	err           error
 	mustRun       bool
 	expectedErr   error
-	expectedValue interface{}
+	expectedValue testStruct
 	postAction    func()
 }
 
@@ -118,29 +118,29 @@ func (a proxiedAdapter) Unlock(ctx context.Context, key string) error {
 	return a.adapter.Unlock(ctx, key)
 }
 
-func makeAction(run *bool, result wracha.ActionResult, err error) wracha.ActionFunc {
-	return func(context.Context) (wracha.ActionResult, error) {
+func makeAction[T any](run *bool, result wracha.ActionResult[T], err error) wracha.ActionFunc[T] {
+	return func(context.Context) (wracha.ActionResult[T], error) {
 		*run = true
 		return result, err
 	}
 }
 
-func makeActionFrom(run *bool, action wracha.ActionFunc) wracha.ActionFunc {
-	return func(ctx context.Context) (wracha.ActionResult, error) {
+func makeActionFrom[T any](run *bool, action wracha.ActionFunc[T]) wracha.ActionFunc[T] {
+	return func(ctx context.Context) (wracha.ActionResult[T], error) {
 		*run = true
 		return action(ctx)
 	}
 }
 
-func (c tCase) run(sut subtestRunner, actor wracha.Actor) {
+func (c tCase[T]) run(ctx context.Context, sut subtestRunner, actor wracha.Actor[T]) {
 	run := false
-	var value interface{}
+	var value T
 	var err error
 
 	if c.action == nil {
-		value, err = actor.Do(c.key, makeAction(&run, c.actionResult, c.err))
+		value, err = actor.Do(ctx, c.key, makeAction(&run, c.actionResult, c.err))
 	} else {
-		value, err = actor.Do(c.key, makeActionFrom(&run, c.action))
+		value, err = actor.Do(ctx, c.key, makeActionFrom(&run, c.action))
 	}
 
 	if c.expectedErr == nil {
@@ -160,10 +160,10 @@ func (c tCase) run(sut subtestRunner, actor wracha.Actor) {
 	}
 }
 
-func runCases(sut subtestRunner, actor wracha.Actor, cases []tCase) {
+func runCases[T any](ctx context.Context, sut subtestRunner, actor wracha.Actor[T], cases []tCase[T]) {
 	for i, c := range cases {
 		sut.Run(fmt.Sprintf("Test Case #%d", i), func() {
-			c.run(sut, actor)
+			c.run(ctx, sut, actor)
 		})
 	}
 }
@@ -173,7 +173,6 @@ type ManagerTestSuite struct {
 	adapter *proxiedAdapter
 	codec   codec.Codec
 	logger  logger.Logger
-	manager wracha.Manager
 }
 
 var (
@@ -189,7 +188,7 @@ var (
 			By:     "John Doe",
 		},
 		Scopes: []string{"edit", "create", "view"},
-		Records: map[string]interface{}{
+		Records: map[string]any{
 			"device":           "Android",
 			"usingRecognition": false,
 		},
@@ -205,7 +204,7 @@ var (
 			Number: "0987654321",
 			By:     "Jane Dee",
 		},
-		Records: map[string]interface{}{
+		Records: map[string]any{
 			"status":           "Disabled",
 			"usingRecognition": true,
 		},
@@ -218,13 +217,16 @@ func (s *ManagerTestSuite) SetupTest() {
 	}
 	s.codec = msgpack.NewCodec()
 	s.logger = std.NewLogger()
-	s.manager = wracha.NewManager(s.adapter, s.codec, s.logger)
 }
 
 func (s ManagerTestSuite) TestActionError() {
-	actor := s.manager.On("testing")
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key:         "testing-key",
 			err:         errMock,
@@ -233,16 +235,20 @@ func (s ManagerTestSuite) TestActionError() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestActionWithNonCachedValues() {
-	actor := s.manager.On("testing").SetReturnType(new(testStruct))
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue1,
 			},
@@ -252,7 +258,7 @@ func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 		},
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
 			},
@@ -262,16 +268,20 @@ func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestActionWithCachedValues() {
-	actor := s.manager.On("testing").SetReturnType(new(testStruct))
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
 			},
@@ -287,18 +297,22 @@ func (s ManagerTestSuite) TestActionWithCachedValues() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
-	actor := s.manager.On("testing").SetReturnType(new(testStruct))
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
 	duration := time.Duration(2) * time.Second
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				TTL:   duration,
 				Value: dummyValue1,
@@ -312,7 +326,7 @@ func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 		},
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
 			},
@@ -322,16 +336,20 @@ func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
-	actor := s.manager.On("testing").SetReturnType(new(testStruct))
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
 			},
@@ -339,12 +357,12 @@ func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 			expectedErr:   nil,
 			expectedValue: dummyValue1,
 			postAction: func() {
-				actor.Invalidate("testing-key")
+				actor.Invalidate(context.Background(), "testing-key")
 			},
 		},
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue2,
 			},
@@ -354,16 +372,20 @@ func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestDefaultPreActionErrorHandler() {
-	actor := s.manager.On("testing")
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: badKeyable("bad"),
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue1,
 			},
@@ -373,30 +395,34 @@ func (s ManagerTestSuite) TestDefaultPreActionErrorHandler() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func (s ManagerTestSuite) TestPreActionErrorHandlerForKey() {
 	run := false
-	actor := s.manager.On("testing").SetPreActionErrorHandler(
-		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs) (interface{}, error) {
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	}).SetPreActionErrorHandler(
+		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs[testStruct]) (testStruct, error) {
 			run = true
 			s.Assert().Equal("key", args.ErrCategory)
 			s.Assert().ErrorIs(args.Err, errMock)
-			return nil, errMock
+			return testStruct{}, errMock
 		},
 	)
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key:           badKeyable("bad"),
 			mustRun:       false,
 			expectedErr:   errMock,
-			expectedValue: nil,
+			expectedValue: testStruct{},
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 
 	s.Assert().True(run)
 }
@@ -407,25 +433,29 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForGet() {
 	}
 
 	run := false
-	actor := s.manager.On("testing").SetPreActionErrorHandler(
-		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs) (interface{}, error) {
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	}).SetPreActionErrorHandler(
+		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs[testStruct]) (testStruct, error) {
 			run = true
 			s.Assert().Equal("get", args.ErrCategory)
 			s.Assert().ErrorIs(args.Err, errMock)
-			return nil, errMock
+			return testStruct{}, errMock
 		},
 	)
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key:           "testing",
 			mustRun:       false,
 			expectedErr:   errMock,
-			expectedValue: nil,
+			expectedValue: testStruct{},
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 
 	s.Assert().True(run)
 }
@@ -436,25 +466,29 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForLock() {
 	}
 
 	run := false
-	actor := s.manager.On("testing").SetPreActionErrorHandler(
-		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs) (interface{}, error) {
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	}).SetPreActionErrorHandler(
+		func(ctx context.Context, args wracha.PreActionErrorHandlerArgs[testStruct]) (testStruct, error) {
 			run = true
 			s.Assert().Equal("lock", args.ErrCategory)
 			s.Assert().ErrorIs(args.Err, errMock)
-			return nil, errMock
+			return testStruct{}, errMock
 		},
 	)
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key:           "testing",
 			mustRun:       false,
 			expectedErr:   errMock,
-			expectedValue: nil,
+			expectedValue: testStruct{},
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 
 	s.Assert().True(run)
 }
@@ -466,12 +500,16 @@ func (s ManagerTestSuite) TestDefaultPostActionErrorHandler() {
 		return errMock
 	}
 
-	actor := s.manager.On("testing")
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	})
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: true,
 				Value: dummyValue1,
 			},
@@ -481,7 +519,7 @@ func (s ManagerTestSuite) TestDefaultPostActionErrorHandler() {
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 
 	s.Assert().True(run)
 }
@@ -491,33 +529,37 @@ func (s ManagerTestSuite) TestPostActionErrorHandlerForStore() {
 		return errMock
 	}
 
-	result := wracha.ActionResult{
+	result := wracha.ActionResult[testStruct]{
 		Cache: true,
 		Value: dummyValue1,
 	}
 
 	run := false
-	actor := s.manager.On("testing").SetPostActionErrorHandler(
-		func(ctx context.Context, args wracha.PostActionErrorHandlerArgs) (interface{}, error) {
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	}).SetPostActionErrorHandler(
+		func(ctx context.Context, args wracha.PostActionErrorHandlerArgs[testStruct]) (testStruct, error) {
 			run = true
 			s.Assert().Equal(result, args.Result)
 			s.Assert().Equal("store", args.ErrCategory)
 			s.Assert().ErrorIs(args.Err, errMock)
-			return nil, errMock
+			return testStruct{}, errMock
 		},
 	)
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key:           "testing",
 			actionResult:  result,
 			mustRun:       true,
 			expectedErr:   errMock,
-			expectedValue: nil,
+			expectedValue: testStruct{},
 		},
 	}
 
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 
 	s.Assert().True(run)
 }
@@ -530,14 +572,16 @@ func (s ManagerTestSuite) TestSetTTL() {
 		return nil
 	}
 
-	actor := s.manager.On("testing").
-		SetTTL(expectedTtl).
-		SetReturnType(new(testStruct))
+	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
+		Adapter: s.adapter,
+		Codec:   s.codec,
+		Logger:  s.logger,
+	}).SetTTL(expectedTtl)
 
-	cases := []tCase{
+	cases := []tCase[testStruct]{
 		{
 			key: "testing-key",
-			actionResult: wracha.ActionResult{
+			actionResult: wracha.ActionResult[testStruct]{
 				Cache: false,
 				Value: dummyValue1,
 			},
@@ -547,54 +591,7 @@ func (s ManagerTestSuite) TestSetTTL() {
 		},
 	}
 
-	runCases(&s, actor, cases)
-}
-
-func (s ManagerTestSuite) TestSetContext() {
-	expectedCtx := context.WithValue(context.Background(), ctxKey("ctxkey"), "value")
-
-	s.adapter.getOverride = func(ctx context.Context, _ string) ([]byte, error) {
-		s.Assert().Equal(expectedCtx, ctx)
-		return nil, adapter.ErrNotFound
-	}
-
-	s.adapter.setOverride = func(ctx context.Context, _ string, _ time.Duration, _ []byte) error {
-		s.Assert().Equal(expectedCtx, ctx)
-		return nil
-	}
-
-	s.adapter.lockOverride = func(ctx context.Context, _ string) error {
-		s.Assert().Equal(expectedCtx, ctx)
-		return nil
-	}
-
-	s.adapter.unlockOverride = func(ctx context.Context, _ string) error {
-		s.Assert().Equal(expectedCtx, ctx)
-		return nil
-	}
-
-	actor := s.manager.On("testing").
-		SetContext(expectedCtx).
-		SetReturnType(new(testStruct))
-
-	cases := []tCase{
-		{
-			key: "testing-key",
-			action: func(ctx context.Context) (wracha.ActionResult, error) {
-				s.Assert().Equal(expectedCtx, ctx)
-
-				return wracha.ActionResult{
-					Cache: false,
-					Value: dummyValue1,
-				}, nil
-			},
-			mustRun:       true,
-			expectedErr:   nil,
-			expectedValue: dummyValue1,
-		},
-	}
-
-	runCases(&s, actor, cases)
+	runCases(context.Background(), &s, actor, cases)
 }
 
 func TestRunManagerTestSuite(t *testing.T) {

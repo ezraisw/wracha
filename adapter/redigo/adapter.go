@@ -53,7 +53,7 @@ func (a redigoAdapter) Get(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (a redigoAdapter) Set(ctx context.Context, key string, ttl time.Duration, value []byte) error {
-	args := []interface{}{
+	args := []any{
 		key, value,
 	}
 

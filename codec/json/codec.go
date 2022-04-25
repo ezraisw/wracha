@@ -13,10 +13,10 @@ func NewCodec() codec.Codec {
 	return &jsonCodec{}
 }
 
-func (c jsonCodec) Marshal(v interface{}) ([]byte, error) {
+func (c jsonCodec) Marshal(v any) ([]byte, error) {
 	return json.Marshal(v)
 }
 
-func (c jsonCodec) Unmarshal(data []byte, v interface{}) error {
+func (c jsonCodec) Unmarshal(data []byte, v any) error {
 	return json.Unmarshal(data, v)
 }

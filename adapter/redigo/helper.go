@@ -2,9 +2,9 @@ package redigo
 
 import "time"
 
-func formatExpirationArgs(ttl time.Duration) []interface{} {
+func formatExpirationArgs(ttl time.Duration) []any {
 	if ttl == 0 {
-		return []interface{}{}
+		return []any{}
 	}
 
 	var opt string
@@ -23,7 +23,7 @@ func formatExpirationArgs(ttl time.Duration) []interface{} {
 		t = 1
 	}
 
-	return []interface{}{opt, t}
+	return []any{opt, t}
 }
 
 func isPX(ttl time.Duration) bool {

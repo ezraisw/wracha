@@ -1,7 +1,7 @@
 package logger
 
 type Logger interface {
-	Info(...interface{})
-	Debug(...interface{})
-	Error(...interface{})
+	Info(...any)
+	Debug(...any)
+	Error(...any)
 }
