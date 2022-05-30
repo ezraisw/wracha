@@ -23,6 +23,16 @@ const (
 )
 
 func NewActor[T any](name string, options ActorOptions) Actor[T] {
+	if options.Adapter == nil {
+		panic("adapter not provided")
+	}
+	if options.Codec == nil {
+		panic("codec not provided")
+	}
+	if options.Logger == nil {
+		panic("logger not provided")
+	}
+
 	return &defaultActor[T]{
 		o:                    options,
 		name:                 name,
