@@ -68,12 +68,12 @@ If the action returns an error, the actor will **not** attempt to cache.
 
 To perform an action, call `wracha.Actor[T any].Do`.
 
-The first parameter is the dependencies of the given action. The actor will only attempt to retrieve previous values from cache of the same dependency. If such value is found, the action will not be performed again.
+The first parameter is the key of the given action. The actor will only attempt to retrieve previous values from cache of the same key. If such value is found in cache, the action will not be performed again.
 
 `wracha.Actor[T any].Do` will return the value from `wracha.ActionResult[T any]` and error. The returned error can either be from the action or from the caching process.
 
 ```go
-// Obtain dependency as key from either HTTP request or somewhere else...
+// Obtain key from either HTTP request or somewhere else...
 id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 user, err := actor.Do(ctx, wracha.KeyableStr(id), func[model.User](ctx context.Context) (wracha.ActionResult[model.User], error) {
@@ -93,8 +93,8 @@ user, err := actor.Do(ctx, wracha.KeyableStr(id), func[model.User](ctx context.C
 // Return value from action, write to response, etc...
 ```
 
-### Invalidating Dependency
-If a dependency is stale, it can be invalidated and deleted off from cache using `wracha.Actor[T any].Invalidate`.
+### Invalidating Dependency/Cache Entry
+If a dependency/cache entry is stale, it can be invalidated and deleted off from cache using `wracha.Actor[T any].Invalidate`.
 
 ```go
 id := "ffffffff-ffff-ffff-ffff-ffffffffffff"
