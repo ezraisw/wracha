@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-	rsgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v8"
+	rsgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/pwnedgod/wracha/adapter"
 	"github.com/pwnedgod/wracha/adapter/util/mutex"
 	redsync "github.com/pwnedgod/wracha/adapter/util/mutex/redsync"
+	"github.com/redis/go-redis/v9"
 )
 
 type goredisAdapter struct {

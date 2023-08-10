@@ -51,8 +51,6 @@ type tCase[T any] struct {
 	postAction    func()
 }
 
-type ctxKey string
-
 type badKeyable string
 
 func (t badKeyable) Key() (string, error) {
@@ -219,7 +217,7 @@ func (s *ManagerTestSuite) SetupTest() {
 	s.logger = std.NewLogger()
 }
 
-func (s ManagerTestSuite) TestActionError() {
+func (s *ManagerTestSuite) TestActionError() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -235,10 +233,10 @@ func (s ManagerTestSuite) TestActionError() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestActionWithNonCachedValues() {
+func (s *ManagerTestSuite) TestActionWithNonCachedValues() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -268,10 +266,10 @@ func (s ManagerTestSuite) TestActionWithNonCachedValues() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestActionWithCachedValues() {
+func (s *ManagerTestSuite) TestActionWithCachedValues() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -297,10 +295,10 @@ func (s ManagerTestSuite) TestActionWithCachedValues() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
+func (s *ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -336,10 +334,10 @@ func (s ManagerTestSuite) TestActionWithExpiredTTLCachedValues() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
+func (s *ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -372,10 +370,10 @@ func (s ManagerTestSuite) TestActionWithInvalidatedCachedValues() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestDefaultPreActionErrorHandler() {
+func (s *ManagerTestSuite) TestDefaultPreActionErrorHandler() {
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
 		Codec:   s.codec,
@@ -395,10 +393,10 @@ func (s ManagerTestSuite) TestDefaultPreActionErrorHandler() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
-func (s ManagerTestSuite) TestPreActionErrorHandlerForKey() {
+func (s *ManagerTestSuite) TestPreActionErrorHandlerForKey() {
 	run := false
 	actor := wracha.NewActor[testStruct]("testing", wracha.ActorOptions{
 		Adapter: s.adapter,
@@ -422,12 +420,12 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForKey() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 
 	s.Assert().True(run)
 }
 
-func (s ManagerTestSuite) TestPreActionErrorHandlerForGet() {
+func (s *ManagerTestSuite) TestPreActionErrorHandlerForGet() {
 	s.adapter.getOverride = func(context.Context, string) ([]byte, error) {
 		return nil, errMock
 	}
@@ -455,12 +453,12 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForGet() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 
 	s.Assert().True(run)
 }
 
-func (s ManagerTestSuite) TestPreActionErrorHandlerForLock() {
+func (s *ManagerTestSuite) TestPreActionErrorHandlerForLock() {
 	s.adapter.lockOverride = func(context.Context, string) error {
 		return errMock
 	}
@@ -488,12 +486,12 @@ func (s ManagerTestSuite) TestPreActionErrorHandlerForLock() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 
 	s.Assert().True(run)
 }
 
-func (s ManagerTestSuite) TestDefaultPostActionErrorHandler() {
+func (s *ManagerTestSuite) TestDefaultPostActionErrorHandler() {
 	run := false
 	s.adapter.setOverride = func(context.Context, string, time.Duration, []byte) error {
 		run = true
@@ -519,12 +517,12 @@ func (s ManagerTestSuite) TestDefaultPostActionErrorHandler() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 
 	s.Assert().True(run)
 }
 
-func (s ManagerTestSuite) TestPostActionErrorHandlerForStore() {
+func (s *ManagerTestSuite) TestPostActionErrorHandlerForStore() {
 	s.adapter.setOverride = func(context.Context, string, time.Duration, []byte) error {
 		return errMock
 	}
@@ -559,12 +557,12 @@ func (s ManagerTestSuite) TestPostActionErrorHandlerForStore() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 
 	s.Assert().True(run)
 }
 
-func (s ManagerTestSuite) TestSetTTL() {
+func (s *ManagerTestSuite) TestSetTTL() {
 	expectedTtl := time.Duration(2) * time.Hour
 
 	s.adapter.setOverride = func(_ context.Context, _ string, ttl time.Duration, _ []byte) error {
@@ -591,7 +589,7 @@ func (s ManagerTestSuite) TestSetTTL() {
 		},
 	}
 
-	runCases(context.Background(), &s, actor, cases)
+	runCases(context.Background(), s, actor, cases)
 }
 
 func TestRunManagerTestSuite(t *testing.T) {
