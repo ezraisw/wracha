@@ -11,14 +11,19 @@ import (
 )
 
 type memoryAdapter struct {
-	cacheCfg   *ccache.Configuration
-	cache      *ccache.Cache
+	cacheCfg *ccache.Configuration
+	cache    *ccache.Cache
+	locker   mutex.Locker
+
+	// Deprecated
 	multiMutex *mutex.MultiMutex
 }
 
 func NewAdapter() adapter.Adapter {
 	return &memoryAdapter{
-		cacheCfg:   ccache.Configure(),
+		cacheCfg: ccache.Configure(),
+		locker:   sync.NewLocker(),
+
 		multiMutex: mutex.NewMultiMutex(sync.NewMutexFactory()),
 	}
 }
@@ -65,10 +70,14 @@ func (a *memoryAdapter) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (a *memoryAdapter) Lock(ctx context.Context, key string) error {
+func (a memoryAdapter) Lock(ctx context.Context, key string) error {
 	return a.multiMutex.Lock(ctx, key)
 }
 
-func (a *memoryAdapter) Unlock(ctx context.Context, key string) error {
+func (a memoryAdapter) Unlock(ctx context.Context, key string) error {
 	return a.multiMutex.Unlock(ctx, key)
+}
+
+func (a memoryAdapter) ObtainLock(ctx context.Context, key string) (adapter.Lock, error) {
+	return a.locker.Obtain(ctx, key)
 }

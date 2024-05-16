@@ -60,12 +60,13 @@ func (t badKeyable) Key() (string, error) {
 type proxiedAdapter struct {
 	adapter adapter.Adapter
 
-	existsOverride func(context.Context, string) (bool, error)
-	getOverride    func(context.Context, string) ([]byte, error)
-	setOverride    func(context.Context, string, time.Duration, []byte) error
-	deleteOverride func(context.Context, string) error
-	lockOverride   func(context.Context, string) error
-	unlockOverride func(context.Context, string) error
+	existsOverride     func(context.Context, string) (bool, error)
+	getOverride        func(context.Context, string) ([]byte, error)
+	setOverride        func(context.Context, string, time.Duration, []byte) error
+	deleteOverride     func(context.Context, string) error
+	lockOverride       func(context.Context, string) error
+	unlockOverride     func(context.Context, string) error
+	obtainLockOverride func(context.Context, string) (adapter.Lock, error)
 }
 
 func (a proxiedAdapter) Exists(ctx context.Context, key string) (bool, error) {
@@ -114,6 +115,14 @@ func (a proxiedAdapter) Unlock(ctx context.Context, key string) error {
 	}
 
 	return a.adapter.Unlock(ctx, key)
+}
+
+func (a proxiedAdapter) ObtainLock(ctx context.Context, key string) (adapter.Lock, error) {
+	if a.obtainLockOverride != nil {
+		return a.obtainLockOverride(ctx, key)
+	}
+
+	return a.adapter.ObtainLock(ctx, key)
 }
 
 func makeAction[T any](run *bool, result wracha.ActionResult[T], err error) wracha.ActionFunc[T] {
@@ -459,8 +468,8 @@ func (s *ManagerTestSuite) TestPreActionErrorHandlerForGet() {
 }
 
 func (s *ManagerTestSuite) TestPreActionErrorHandlerForLock() {
-	s.adapter.lockOverride = func(context.Context, string) error {
-		return errMock
+	s.adapter.obtainLockOverride = func(context.Context, string) (adapter.Lock, error) {
+		return nil, errMock
 	}
 
 	run := false

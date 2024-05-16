@@ -136,11 +136,12 @@ func (a defaultActor[T]) handle(ctx context.Context, keyable Keyable, action Act
 		if errors.Is(err, adapter.ErrNotFound) {
 			lockKey := "lock###" + key
 
-			if err := a.o.Adapter.Lock(ctx, lockKey); err != nil {
+			lock, err := a.o.Adapter.ObtainLock(ctx, lockKey)
+			if err != nil {
 				return zeroOf[T](), newPreActionError("lock", "error while attempting to lock", err)
 			}
 			defer func() {
-				a.o.Adapter.Unlock(ctx, lockKey)
+				lock.Release(ctx)
 				a.o.Logger.Debug("lock released", lockKey)
 			}()
 			a.o.Logger.Debug("lock acquired", lockKey)

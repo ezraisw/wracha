@@ -13,20 +13,20 @@ import (
 
 type redislockMutexFactory struct {
 	lc      *redislock.Client
-	lockTTL time.Duration
+	lockTtl time.Duration
 }
 
-func NewMutexFactory(client redislock.RedisClient, lockTTL time.Duration) mutex.MutexFactory {
+func NewMutexFactory(client redislock.RedisClient, lockTtl time.Duration) mutex.MutexFactory {
 	return &redislockMutexFactory{
 		lc:      redislock.New(client),
-		lockTTL: lockTTL,
+		lockTtl: lockTtl,
 	}
 }
 
 func (f redislockMutexFactory) Make(key string) mutex.Mutex {
 	return &redislockMutex{
 		lc:      f.lc,
-		lockTTL: f.lockTTL,
+		lockTtl: f.lockTtl,
 		key:     key,
 	}
 }
@@ -36,7 +36,7 @@ type redislockMutex struct {
 	currentLock *redislock.Lock
 
 	lc      *redislock.Client
-	lockTTL time.Duration
+	lockTtl time.Duration
 	key     string
 }
 
@@ -44,7 +44,7 @@ func (m *redislockMutex) Lock(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	lock, err := m.lc.Obtain(ctx, m.key, m.lockTTL, &redislock.Options{})
+	lock, err := m.lc.Obtain(ctx, m.key, m.lockTtl, &redislock.Options{})
 	if err != nil {
 		return adapter.ErrFailedLock
 	}

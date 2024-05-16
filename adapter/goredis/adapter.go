@@ -12,20 +12,25 @@ import (
 )
 
 type goredisAdapter struct {
-	client     redis.UniversalClient
+	client redis.UniversalClient
+	locker mutex.Locker
+
+	// Deprecated
 	multiMutex *mutex.MultiMutex
 }
 
-const DefaultLockTTL = 1 * time.Minute
+const DefaultLockTTL = 8 * time.Minute
 
 func NewAdapter(client redis.UniversalClient) adapter.Adapter {
 	return NewAdapterWithLockTTL(client, DefaultLockTTL)
 }
 
-func NewAdapterWithLockTTL(client redis.UniversalClient, lockTTL time.Duration) adapter.Adapter {
+func NewAdapterWithLockTTL(client redis.UniversalClient, lockTtl time.Duration) adapter.Adapter {
 	return &goredisAdapter{
-		client:     client,
-		multiMutex: mutex.NewMultiMutex(redislock.NewMutexFactory(client, lockTTL)),
+		client: client,
+		locker: redislock.NewLocker(client, lockTtl),
+
+		multiMutex: mutex.NewMultiMutex(redislock.NewMutexFactory(client, lockTtl)),
 	}
 }
 
@@ -59,10 +64,16 @@ func (a goredisAdapter) Delete(ctx context.Context, key string) error {
 	return a.client.Del(ctx, key).Err()
 }
 
+// Deprecated
 func (a goredisAdapter) Lock(ctx context.Context, key string) error {
 	return a.multiMutex.Lock(ctx, key)
 }
 
+// Deprecated
 func (a goredisAdapter) Unlock(ctx context.Context, key string) error {
 	return a.multiMutex.Unlock(ctx, key)
+}
+
+func (a goredisAdapter) ObtainLock(ctx context.Context, key string) (adapter.Lock, error) {
+	return a.locker.Obtain(ctx, key)
 }

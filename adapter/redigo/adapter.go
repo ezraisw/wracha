@@ -13,13 +13,18 @@ import (
 )
 
 type redigoAdapter struct {
-	pool       *redis.Pool
+	pool   *redis.Pool
+	locker mutex.Locker
+
+	// Deprecated
 	multiMutex *mutex.MultiMutex
 }
 
 func NewAdapter(pool *redis.Pool) adapter.Adapter {
 	return &redigoAdapter{
-		pool:       pool,
+		pool:   pool,
+		locker: redsync.NewLocker(rsredigo.NewPool(pool)),
+
 		multiMutex: mutex.NewMultiMutex(redsync.NewMutexFactory(rsredigo.NewPool(pool))),
 	}
 }
@@ -82,4 +87,8 @@ func (a redigoAdapter) Lock(ctx context.Context, key string) error {
 
 func (a redigoAdapter) Unlock(ctx context.Context, key string) error {
 	return a.multiMutex.Unlock(ctx, key)
+}
+
+func (a redigoAdapter) ObtainLock(ctx context.Context, key string) (adapter.Lock, error) {
+	return a.locker.Obtain(ctx, key)
 }
