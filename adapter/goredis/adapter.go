@@ -5,10 +5,9 @@ import (
 	"errors"
 	"time"
 
-	rsgoredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
 	"github.com/pwnedgod/wracha/adapter"
 	"github.com/pwnedgod/wracha/adapter/util/mutex"
-	redsync "github.com/pwnedgod/wracha/adapter/util/mutex/redsync"
+	"github.com/pwnedgod/wracha/adapter/util/mutex/redislock"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -17,10 +16,16 @@ type goredisAdapter struct {
 	multiMutex *mutex.MultiMutex
 }
 
+const DefaultLockTTL = 1 * time.Minute
+
 func NewAdapter(client redis.UniversalClient) adapter.Adapter {
+	return NewAdapterWithLockTTL(client, DefaultLockTTL)
+}
+
+func NewAdapterWithLockTTL(client redis.UniversalClient, lockTTL time.Duration) adapter.Adapter {
 	return &goredisAdapter{
 		client:     client,
-		multiMutex: mutex.NewMultiMutex(redsync.NewMutexFactory(rsgoredis.NewPool(client))),
+		multiMutex: mutex.NewMultiMutex(redislock.NewMutexFactory(client, lockTTL)),
 	}
 }
 
