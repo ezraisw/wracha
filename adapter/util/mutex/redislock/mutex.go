@@ -2,6 +2,7 @@ package redislock
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -60,7 +61,7 @@ func (m *redislockMutex) Unlock(ctx context.Context) error {
 	defer m.mu.Unlock()
 
 	err := m.currentLock.Release(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, redislock.ErrLockNotHeld) {
 		return adapter.ErrFailedUnlock
 	}
 
