@@ -3,7 +3,7 @@ package json
 import (
 	"encoding/json"
 
-	"github.com/pwnedgod/wracha/codec"
+	"github.com/ezraisw/wracha/codec"
 )
 
 type jsonCodec struct {

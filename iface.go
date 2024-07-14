@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/codec"
-	"github.com/pwnedgod/wracha/logger"
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/codec"
+	"github.com/ezraisw/wracha/logger"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

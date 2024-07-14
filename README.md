@@ -7,11 +7,13 @@ Supports in memory cache, [go-redis](https://github.com/go-redis/redis), and [re
 ## Installation
 
 Simply run the following command to install:
+
 ```
-go get github.com/pwnedgod/wracha
+go get github.com/ezraisw/wracha
 ```
 
 ## Usage
+
 ### Initialization
 
 To use, prepare a `wracha.ActorOptions` with your flavor of `adapter`, `codec`, and `logger`.
@@ -20,10 +22,10 @@ To use, prepare a `wracha.ActorOptions` with your flavor of `adapter`, `codec`, 
 package main
 
 import (
-    "github.com/pwnedgod/wracha"
-    "github.com/pwnedgod/wracha/adapter/memory"
-    "github.com/pwnedgod/wracha/codec/json"
-    "github.com/pwnedgod/wracha/logger/std"
+    "github.com/ezraisw/wracha"
+    "github.com/ezraisw/wracha/adapter/memory"
+    "github.com/ezraisw/wracha/codec/json"
+    "github.com/ezraisw/wracha/logger/std"
 )
 
 func main() {
@@ -53,11 +55,13 @@ actor.SetTTL(time.Duration(30) * time.Minute).
 ```
 
 An action is defined as
+
 ```go
 func[T any](context.Context) (ActionResult[T], error)
 ```
 
 The action must return a `wracha.ActionResult[T any]`.
+
 - `Cache` determines whether to cache the given value.
 - `TTL` overrides the set TTL value.
 - `Value` is the value to return and possibly cache. Must be serializable.
@@ -94,6 +98,7 @@ user, err := actor.Do(ctx, wracha.KeyableStr(id), func[model.User](ctx context.C
 ```
 
 ### Invalidating Dependency/Cache Entry
+
 If a dependency/cache entry is stale, it can be invalidated and deleted off from cache using `wracha.Actor[T any].Invalidate`.
 
 ```go
@@ -106,11 +111,13 @@ if err != nil {
 ```
 
 ### Error Handling
+
 By default, errors thrown before calling the action (value retrieval or locking) immediately executes the action without an attempt to store the value in cache. All errors thrown after calling the action (value storage) is also ignored.
 
 You can override this behaviour by setting either `wracha.Actor[T any].SetPreActionErrorHandler` or `wracha.Actor[T any].SetPostActionErrorHandler`.
 
 ### Multiple Dependencies
+
 If multiple dependencies are required, you can wrap your dependencies with `wracha.KeyableMap`. The map will be converted to a hashed SHA1 representation as key for the cache.
 
 ```go
@@ -125,11 +132,13 @@ res, err := actor.Do(ctx, deps, /* ... */)
 ### Adapters
 
 Adapters are used for storing cache data. Out of the box, three adapters are provided:
+
 - memory (uses [ccache](https://github.com/karlseguin/ccache))
 - goredis
 - redigo
 
 You can create your own adapter by satisfying the following interface:
+
 ```go
 type Adapter interface {
 	Exists(ctx context.Context, key string) (bool, error)

@@ -3,8 +3,8 @@ package sync
 import (
 	"context"
 
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
 )
 
 type syncMutexLocker struct {

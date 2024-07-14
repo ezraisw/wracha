@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pwnedgod/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter"
 )
 
 type (

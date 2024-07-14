@@ -1,7 +1,7 @@
 package msgpack
 
 import (
-	"github.com/pwnedgod/wracha/codec"
+	"github.com/ezraisw/wracha/codec"
 	"github.com/vmihailenco/msgpack/v5"
 )
 

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
+	"github.com/ezraisw/wracha/adapter/util/mutex/redsync"
 	rsredigo "github.com/go-redsync/redsync/v4/redis/redigo"
 	"github.com/gomodule/redigo/redis"
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
-	"github.com/pwnedgod/wracha/adapter/util/mutex/redsync"
 )
 
 type redigoAdapter struct {

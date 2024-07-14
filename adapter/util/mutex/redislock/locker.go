@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/bsm/redislock"
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
 )
 
 type redislockLocker struct {

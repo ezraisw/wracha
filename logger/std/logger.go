@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pwnedgod/wracha/logger"
+	"github.com/ezraisw/wracha/logger"
 )
 
 type stdLogger struct {

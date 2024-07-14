@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
-	"github.com/pwnedgod/wracha/adapter/util/mutex/redislock"
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
+	"github.com/ezraisw/wracha/adapter/util/mutex/redislock"
 	"github.com/redis/go-redis/v9"
 )
 

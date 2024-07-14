@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
 )
 
 type syncMutexFactory struct {

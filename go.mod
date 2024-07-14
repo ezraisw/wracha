@@ -1,4 +1,4 @@
-module github.com/pwnedgod/wracha
+module github.com/ezraisw/wracha
 
 go 1.22
 

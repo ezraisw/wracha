@@ -3,10 +3,10 @@ package redsync
 import (
 	"context"
 
+	"github.com/ezraisw/wracha/adapter"
+	"github.com/ezraisw/wracha/adapter/util/mutex"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/go-redsync/redsync/v4/redis"
-	"github.com/pwnedgod/wracha/adapter"
-	"github.com/pwnedgod/wracha/adapter/util/mutex"
 )
 
 type redsyncLocker struct {
