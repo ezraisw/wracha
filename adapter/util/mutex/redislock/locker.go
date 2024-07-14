@@ -23,7 +23,7 @@ func NewLocker(client redislock.RedisClient, lockTtl time.Duration) mutex.Locker
 
 func (lr redislockLocker) Obtain(ctx context.Context, key string) (mutex.Lock, error) {
 	lock, err := lr.lc.Obtain(ctx, key, lr.lockTtl, &redislock.Options{
-		RetryStrategy: redislock.LimitRetry(redislock.ExponentialBackoff(16*time.Millisecond, 512*time.Millisecond), 32),
+		RetryStrategy: redislock.LimitRetry(redislock.ExponentialBackoff(16*time.Millisecond, 4096*time.Millisecond), 32),
 	})
 	if err != nil {
 		return nil, adapter.ErrFailedLock
